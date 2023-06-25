@@ -1,41 +1,62 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
-using Unity.Netcode;
 
 public class ScoreManager : NetworkBehaviour
 {
     // Reference to the score UI text element
     [SerializeField] private Text scoreText;
 
-    // Network variable to synchronize the score across all clients
-    private NetworkVariable<int> syncedScore = new NetworkVariable<int>(0);
+    // Dictionary to store scores for each player
+    private Dictionary<ulong, int> playerScores = new Dictionary<ulong, int>();
 
     private void Start()
     {
         // Update the local score UI
-        UpdateScoreUI();
-
-        syncedScore.OnValueChanged += OnSyncedScoreChanged;
+        if (IsServer) UpdateScoreUIClientRpc("");
     }
 
-    private void UpdateScoreUI()
+    private string getScoreUpdates()
+    {
+        // Generate the score text
+        string scoreString = "Scores:\n";
+
+        // Sort the player scores in descending order
+        foreach (var playerScore in playerScores.OrderByDescending(kv => kv.Value))
+        {
+            scoreString += $"Player {playerScore.Key}: {playerScore.Value}\n";
+        }
+        return scoreString;
+    }
+
+    [ClientRpc]
+    private void UpdateScoreUIClientRpc(string scoreString)
     {
         // Update the score text element
-        scoreText.text = "Score: " + syncedScore.Value.ToString();
+        scoreText.text = scoreString;
     }
 
-    // Server RPC method to increment the score
-    [ServerRpc (RequireOwnership = false)]
-    public void IncrementScoreServerRpc()
+    // Server RPC method to increment the score for a specific player
+    [ServerRpc(RequireOwnership = false)]
+    public void IncrementScoreServerRpc(ulong playerId)
     {
-        // Increment the score
-        syncedScore.Value++;
-    }
+        // Check if the player exists in the dictionary
+        if (playerScores.ContainsKey(playerId))
+        {
+            // Increment the player's score
+            playerScores[playerId]++;
+        }
+        else
+        {
+            // Add the player to the dictionary and set their initial score to 1
+            playerScores.Add(playerId, 1);
+        }
 
-    // Hook method called when the synced score changes
-    private void OnSyncedScoreChanged(int previousScore, int newScore)
-    {
         // Update the score UI
-        UpdateScoreUI();
+        UpdateScoreUIClientRpc(getScoreUpdates());
     }
 }
+

@@ -70,8 +70,8 @@ public class PlayerController : NetworkBehaviour
     }
 
     // Server RPC method to handle pickup collection and score incrementing
-    [ServerRpc]
-    private void CollectPickupServerRpc(ulong pickupNetworkObjectId)
+    [ServerRpc(RequireOwnership = true)]
+    private void CollectPickupServerRpc(ulong pickupNetworkObjectId, ServerRpcParams serverRpcParams = default)
     {
         // Get the network object associated with the pickup using the ID
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(pickupNetworkObjectId, out NetworkObject pickupNetworkObject))
@@ -83,8 +83,8 @@ public class PlayerController : NetworkBehaviour
                 pickupNetworkObject.Despawn(true);
             }
 
-            // Increment the score on the server
-            scoreManager.IncrementScoreServerRpc();
+            // Increment the score for the specific player on the server
+            scoreManager.IncrementScoreServerRpc(serverRpcParams.Receive.SenderClientId);
         }
     }
 }
