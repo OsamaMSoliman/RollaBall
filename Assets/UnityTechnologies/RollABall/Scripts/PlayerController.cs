@@ -7,7 +7,7 @@ public class PlayerController : NetworkBehaviour
     private Rigidbody rb;
     public float moveSpeed = 5f;
 
-    public static Action<Transform> PlayerSpawnedLocally;
+    public static event Action<Transform> PlayerSpawnedLocally;
     public override void OnNetworkSpawn()
     {
         rb = GetComponent<Rigidbody>();
