@@ -26,7 +26,7 @@ public class PlayerController : NetworkBehaviour
     }
 
     [ServerRpc]
-    void MovePlayerServerRpc(Vector3 movement)
+    private void MovePlayerServerRpc(Vector3 movement)
     {
         // Apply the movement to the host's Rigidbody
         rb.AddForce(movement * moveSpeed);
@@ -36,10 +36,55 @@ public class PlayerController : NetworkBehaviour
     }
 
     [ClientRpc]
-    void MovePlayerClientRpc(Vector3 position, Vector3 velocity)
+    private void MovePlayerClientRpc(Vector3 position, Vector3 velocity)
     {
         // Update the position and velocity of the client's Rigidbody
         rb.position = position;
         rb.velocity = velocity;
+    }
+
+    // Reference to the ScoreManager script
+    private ScoreManager scoreManager;
+
+    private void Start()
+    {
+        // Find and cache the ScoreManager script
+        scoreManager = FindObjectOfType<ScoreManager>();
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (!IsLocalPlayer) return;
+
+        if (other.CompareTag("Pick Up"))
+        {
+            // Get the network object associated with the pickup
+            NetworkObject networkObject = other.GetComponent<NetworkObject>();
+
+            // Check if the network object exists
+            if (networkObject != null)
+            {
+                // Call the server method to handle pickup collection and score incrementing
+                CollectPickupServerRpc(networkObject.NetworkObjectId);
+            }
+        }
+    }
+
+    // Server RPC method to handle pickup collection and score incrementing
+    [ServerRpc]
+    private void CollectPickupServerRpc(ulong pickupNetworkObjectId)
+    {
+        // Get the network object associated with the pickup using the ID
+        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(pickupNetworkObjectId, out NetworkObject pickupNetworkObject))
+        {
+            // Only allow the server to despawn the pickup object
+            if (NetworkManager.Singleton.IsServer)
+            {
+                // Destroy the pickup object on all clients
+                pickupNetworkObject.Despawn(true);
+            }
+
+            // Increment the score on the server
+            scoreManager.IncrementScoreServerRpc();
+        }
     }
 }
