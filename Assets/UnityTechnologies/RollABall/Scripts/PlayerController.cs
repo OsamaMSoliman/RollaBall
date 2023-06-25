@@ -1,4 +1,5 @@
-﻿using Unity.Netcode;
+﻿using System;
+using Unity.Netcode;
 using UnityEngine;
 
 public class PlayerController : NetworkBehaviour
@@ -6,9 +7,11 @@ public class PlayerController : NetworkBehaviour
     private Rigidbody rb;
     public float moveSpeed = 5f;
 
+    public static Action<Transform> PlayerSpawnedLocally;
     public override void OnNetworkSpawn()
     {
         rb = GetComponent<Rigidbody>();
+        if (IsLocalPlayer) PlayerSpawnedLocally?.Invoke(transform);
     }
 
     private void Update()
